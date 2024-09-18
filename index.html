@@ -1,0 +1,280 @@
+<html><head><base href="">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Image Generator with Active Formats</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(120deg, #f6d365 0%, #fda085 100%);
+    margin: 0;
+    padding: 20px;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .container {
+    background-color: rgba(255, 255, 255, 0.9);
+    border-radius: 10px;
+    padding: 30px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    max-width: 600px;
+    width: 100%;
+  }
+  h1 {
+    color: #ff6b6b;
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  label {
+    display: block;
+    margin-bottom: 5px;
+    color: #4a4a4a;
+  }
+  input[type="text"], select {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 15px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-sizing: border-box;
+  }
+  button {
+    background-color: #4ecdc4;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s;
+    margin-right: 10px;
+    margin-bottom: 10px;
+  }
+  button:hover {
+    background-color: #45b7aa;
+  }
+  button.active {
+    background-color: #ff6b6b;
+  }
+  #result {
+    margin-top: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .image-container {
+    margin: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+    cursor: pointer;
+  }
+  .image-container img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .loading {
+    text-align: center;
+    color: #4a4a4a;
+    font-style: italic;
+  }
+  .format-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-bottom: 15px;
+  }
+  .modal {
+    display: none;
+    position: fixed;
+    z-index: 1;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.9);
+  }
+  .modal-content {
+    margin: auto;
+    display: block;
+    width: auto;
+    height: auto;
+    max-width: 90%;
+    max-height: 90%;
+  }
+  .close {
+    position: absolute;
+    top: 15px;
+    right: 35px;
+    color: #f1f1f1;
+    font-size: 40px;
+    font-weight: bold;
+    transition: 0.3s;
+  }
+  .close:hover,
+  .close:focus {
+    color: #bbb;
+    text-decoration: none;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <h1>Generate ai image</h1>
+    <form id="image-form">
+      <label for="prompt">Prompt</label>
+      <input type="text" id="prompt" name="prompt" required>
+      
+      <label for="quality">Quality of image</label>
+      <select id="quality" name="quality">
+        <option value="standard">standard</option>
+        <option value="hd">hd</option>
+        <option value="ultra-hd">ultra-hd</option>
+      </select>
+      
+      <label for="quantity">How many image you want to Generate</label>
+      <select id="quantity" name="quantity">
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+      </select>
+      
+      <label>Formato de la imagen:</label>
+      <div class="format-buttons">
+        <button type="button" class="format-btn active" data-format="9:16">9:16 (Vertical)</button>
+        <button type="button" class="format-btn" data-format="16:9">16:9 (Horizontal)</button>
+        <button type="button" class="format-btn " data-format="1:1">1:1</button>
+        <button type="button" class="format-btn" data-format="4:3">4:3</button>
+      </div>
+      
+      <button type="submit">Generate Image</button>
+    </form>
+    
+    <div id="result"></div>
+  </div>
+
+  <div id="imageModal" class="modal">
+    <span class="close">&times;</span>
+    <img class="modal-content" id="modalImage">
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const form = document.getElementById('image-form');
+      const result = document.getElementById('result');
+      const formatButtons = document.querySelectorAll('.format-btn');
+      const modal = document.getElementById('imageModal');
+      const modalImg = document.getElementById('modalImage');
+      const closeBtn = document.getElementsByClassName('close')[0];
+      let selectedFormat = '1:1'; // Default format
+
+      formatButtons.forEach(button => {
+        button.addEventListener('click', function() {
+          formatButtons.forEach(btn => btn.classList.remove('active'));
+          this.classList.add('active');
+          selectedFormat = this.dataset.format;
+        });
+      });
+
+      form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const prompt = document.getElementById('prompt').value;
+        const quality = document.getElementById('quality').value;
+        const quantity = parseInt(document.getElementById('quantity').value, 10);
+        
+        result.innerHTML = '<p class="loading">Generando imágenes, por favor espere...</p>';
+        
+        generateAIImages(prompt, quality, quantity, selectedFormat)
+          .then(function(response) {
+            result.innerHTML = '';
+            response.forEach(function(imageUrl) {
+              const imgContainer = document.createElement('div');
+              imgContainer.className = 'image-container';
+              imgContainer.style.width = '200px';
+              imgContainer.style.height = getContainerHeight(selectedFormat);
+              const img = document.createElement('img');
+              img.src = imageUrl;
+              img.alt = `Imagen generada basada en: ${prompt}`;
+              imgContainer.appendChild(img);
+              result.appendChild(imgContainer);
+
+              imgContainer.addEventListener('click', function() {
+                modal.style.display = "block";
+                modalImg.src = this.querySelector('img').src;
+                modalImg.style.width = 'auto';
+                modalImg.style.height = 'auto';
+                modalImg.style.maxWidth = '90%';
+                modalImg.style.maxHeight = '90%';
+              });
+            });
+          })
+          .catch(function(error) {
+            result.innerHTML = `<p>Error: ${error.message}</p>`;
+          });
+      });
+
+      closeBtn.onclick = function() {
+        modal.style.display = "none";
+      }
+
+      window.onclick = function(event) {
+        if (event.target == modal) {
+          modal.style.display = "none";
+        }
+      }
+    });
+
+    function getContainerHeight(format) {
+      const baseWidth = 200;
+      const [width, height] = format.split(':').map(Number);
+      return `${(height / width) * baseWidth}px`;
+    }
+
+    function generateAIImages(prompt, quality, quantity, format) {
+      return new Promise(function(resolve) {
+        setTimeout(function() {
+          const imageUrls = [];
+          const baseUrl = 'https://source.unsplash.com/random/';
+          const sizes = {
+            'standard': 800,
+            'hd': 1200,
+            'ultra-hd': 1600
+          };
+          
+          const formatSizes = {
+            '9:16': { width: 9, height: 16 },
+            '16:9': { width: 16, height: 9 },
+            '1:1': { width: 1, height: 1 },
+            '4:3': { width: 4, height: 3 }
+          };
+          
+          const baseSize = sizes[quality];
+          const { width, height } = formatSizes[format];
+          
+          let finalWidth, finalHeight;
+          if (width > height) {
+            finalWidth = baseSize;
+            finalHeight = Math.round(baseSize * (height / width));
+          } else {
+            finalHeight = baseSize;
+            finalWidth = Math.round(baseSize * (width / height));
+          }
+          
+          for (let i = 0; i < quantity; i++) {
+            const randomId = Math.floor(Math.random() * 1000);
+            imageUrls.push(`${baseUrl}${finalWidth}x${finalHeight}?${prompt}&sig=${randomId}`);
+          }
+          
+          resolve(imageUrls);
+        }, 2000);
+      });
+    }
+  </script>
+</body>
+</html>
